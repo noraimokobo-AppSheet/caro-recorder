@@ -391,9 +391,10 @@
     reader.onload = async () => {
       const base64 = reader.result.split(',')[1];
       try {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbykJp2YrNQFGd6CDOmISRVKmEAjQq7yv0Ho1LXxKyToBw9XRF_PjxIhOtASlH2znxRhjg/exec', {
+        await fetch('https://script.google.com/macros/s/AKfycbykJp2YrNQFGd6CDOmISRVKmEAjQq7yv0Ho1LXxKyToBw9XRF_PjxIhOtASlH2znxRhjg/exec', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             action: 'upload',
             fileName: fileName,
@@ -402,14 +403,9 @@
             category: category
           })
         });
-        const json = await res.json();
-        if (json.success) {
-          resultMsg.textContent = category + 'フォルダへ送信しました';
-          resultMsg.className = 'result-msg success';
-          uploadBtn.textContent = '送信済み';
-        } else {
-          throw new Error(json.error || 'エラー');
-        }
+        resultMsg.textContent = category + 'フォルダへ送信しました';
+        resultMsg.className = 'result-msg success';
+        uploadBtn.textContent = '送信済み';
       } catch (e) {
         resultMsg.textContent = '送信失敗。再試行してください';
         resultMsg.className = 'result-msg error';
