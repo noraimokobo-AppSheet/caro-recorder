@@ -250,7 +250,35 @@
     padding: 0 1rem;
     line-height: 1.5;
   }
+  .bt-notice {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 0 1rem;
+    line-height: 1.5;
+  }
 
+  .level-wrap {
+    width: 100%;
+    max-width: 200px;
+    height: 3px;
+    background: var(--border);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .level-wrap.active { opacity: 1; }
+
+  .level-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.08s linear;
+  }
+  
   .mic-info.warn {
     color: var(--red);
   }
@@ -273,13 +301,19 @@
 </div>
 
 <div class="timer" id="timer">00:00</div>
-
+  
+<div class="level-wrap" id="levelWrap">
+  <div class="level-bar" id="levelBar"></div>
+</div>
+  
 <div class="status" id="status">
   <span class="dot"></span>
   <span id="statusText">タップして録音開始</span>
 </div>
 
 <div class="mic-info" id="micInfo"></div>
+  
+<div class="bt-notice">Bluetoothに繋がっていないか確認してください</div>
   
 <div class="upload-area" id="uploadArea">
   <button class="upload-btn" id="uploadBtn">送信する</button>
@@ -301,6 +335,8 @@
   const categoryBadge = document.getElementById('categoryBadge');
   const ringProgress = document.getElementById('ringProgress');
   const micInfo = document.getElementById('micInfo');
+  const levelWrap = document.getElementById('levelWrap');
+  const levelBar = document.getElementById('levelBar');
 
   let mediaRecorder = null;
   let audioChunks = [];
@@ -308,6 +344,9 @@
   let seconds = 0;
   let audioBlob = null;
   let recordingStartTime = null;
+  let audioContext = null;
+  let analyser = null;
+  let levelRafId = null;
 
   const CIRCUMFERENCE = 2 * Math.PI * 80;
   ringProgress.style.strokeDasharray = CIRCUMFERENCE;
@@ -335,6 +374,40 @@
     }
   }
 
+    function startLevelMeter(stream) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      levelWrap.classList.add('active');
+
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length;
+        const pct = Math.min((avg / 60) * 100, 100);
+        levelBar.style.width = pct + '%';
+        levelRafId = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) {
+      // メーターが動かなくても録音は継続する
+    }
+  }
+
+  function stopLevelMeter() {
+    if (levelRafId) { cancelAnimationFrame(levelRafId); levelRafId = null; }
+    if (audioContext) { audioContext.close(); audioContext = null; }
+    analyser = null;
+    levelBar.style.width = '0%';
+    levelWrap.classList.remove('active');
+  }
+  
   function getCategory() {
     const h = new Date().getHours();
     return h < 12 ? '朝礼' : '終礼';
@@ -370,8 +443,9 @@
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
        // 実際に使われているマイク名を表示
-      const audioTrack = stream.getAudioTracks()[0];
-      showMicInfo(audioTrack ? audioTrack.label : '');
+       // const audioTrack = stream.getAudioTracks()[0];
+       // showMicInfo(audioTrack ? audioTrack.label : '');
+      startLevelMeter(stream);
       audioChunks = [];
       recordingStartTime = new Date();
       updateCategory();
@@ -385,6 +459,7 @@
       mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = () => {
+        stopLevelMeter();
         stream.getTracks().forEach(t => t.stop());
         audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
         uploadArea.classList.add('visible');
