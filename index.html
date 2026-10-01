@@ -14,7 +14,7 @@
     --surface: #111111;
     --border: #2a2a2a;
     --text: #f0f0f0;
-    --muted: #666;
+    --muted: #8e8e8e;
     --accent: #6dd639;
     --accent-dim: rgba(109, 214, 57, 0.15);
     --red: #e05555;
@@ -263,7 +263,7 @@
   .level-wrap {
     width: 100%;
     max-width: 200px;
-    height: 3px;
+    height: 6px;
     background: var(--border);
     margin-bottom: 1.5rem;
     opacity: 0;
@@ -276,7 +276,7 @@
     height: 100%;
     width: 0%;
     background: var(--accent);
-    transition: width 0.08s linear;
+    transition: width 0.05s linear;
   }
   
   .mic-info.warn {
@@ -311,7 +311,7 @@
   <span id="statusText">タップして録音開始</span>
 </div>
 
-<div class="mic-info" id="micInfo"></div>
+<!--<div class="mic-info" id="micInfo"></div>-->
   
 <div class="bt-notice">Bluetoothに繋がっていないか確認してください</div>
   
@@ -390,7 +390,7 @@
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length;
-        const pct = Math.min((avg / 60) * 100, 100);
+        const pct = Math.min((avg / 35) * 100, 100);
         levelBar.style.width = pct + '%';
         levelRafId = requestAnimationFrame(tick);
       };
@@ -549,8 +549,8 @@
     uploadBtn.textContent = '送信する';
     categoryBadge.classList.remove('visible');
     statusText.textContent = 'タップして録音開始';
-    micInfo.textContent = '';
-    micInfo.classList.remove('warn');
+    // micInfo.textContent = '';
+    // micInfo.classList.remove('warn');
     status.classList.remove('recording');
     recordBtn.classList.remove('recording');
     btnLabel.textContent = 'REC';
