@@ -238,6 +238,23 @@
 
   .retry-btn:hover { border-color: var(--muted); color: var(--text); }
   .retry-btn.visible { display: block; }
+
+    .mic-info {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: center;
+    margin-top: -2.5rem;
+    margin-bottom: 2.5rem;
+    min-height: 14px;
+    padding: 0 1rem;
+    line-height: 1.5;
+  }
+
+  .mic-info.warn {
+    color: var(--red);
+  }
+  
 </style>
 </head>
 <body>
@@ -262,6 +279,8 @@
   <span id="statusText">タップして録音開始</span>
 </div>
 
+<div class="mic-info" id="micInfo"></div>
+  
 <div class="upload-area" id="uploadArea">
   <button class="upload-btn" id="uploadBtn">送信する</button>
   <div class="result-msg" id="resultMsg"></div>
@@ -281,6 +300,7 @@
   const retryBtn = document.getElementById('retryBtn');
   const categoryBadge = document.getElementById('categoryBadge');
   const ringProgress = document.getElementById('ringProgress');
+  const micInfo = document.getElementById('micInfo');
 
   let mediaRecorder = null;
   let audioChunks = [];
@@ -292,6 +312,28 @@
   const CIRCUMFERENCE = 2 * Math.PI * 80;
   ringProgress.style.strokeDasharray = CIRCUMFERENCE;
   ringProgress.style.strokeDashoffset = CIRCUMFERENCE;
+
+  // 内蔵マイクと判定するキーワード
+  const BUILTIN_KEYWORDS = ['iphone', 'ipad', 'macbook', '内蔵', 'default', '既定',
+                            'built-in', 'インターナル', 'マイク'];
+
+  function showMicInfo(label) {
+    if (!label) {
+      micInfo.textContent = '使用マイク: 取得できませんでした';
+      micInfo.classList.remove('warn');
+      return;
+    }
+    const lower = label.toLowerCase();
+    const isBuiltin = BUILTIN_KEYWORDS.some(k => lower.includes(k));
+    if (isBuiltin) {
+      micInfo.textContent = '使用マイク: ' + label;
+      micInfo.classList.remove('warn');
+    } else {
+      micInfo.textContent = '使用マイク: ' + label + '\n外部マイクに接続されています。確認してください';
+      micInfo.classList.add('warn');
+      micInfo.style.whiteSpace = 'pre-line';
+    }
+  }
 
   function getCategory() {
     const h = new Date().getHours();
@@ -327,10 +369,13 @@
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+       // 実際に使われているマイク名を表示
+      const audioTrack = stream.getAudioTracks()[0];
+      showMicInfo(audioTrack ? audioTrack.label : '');
       audioChunks = [];
       recordingStartTime = new Date();
       updateCategory();
-
+      
       const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus' }
         : MediaRecorder.isTypeSupported('audio/mp4')
@@ -429,6 +474,8 @@
     uploadBtn.textContent = '送信する';
     categoryBadge.classList.remove('visible');
     statusText.textContent = 'タップして録音開始';
+    micInfo.textContent = '';
+    micInfo.classList.remove('warn');
     status.classList.remove('recording');
     recordBtn.classList.remove('recording');
     btnLabel.textContent = 'REC';
